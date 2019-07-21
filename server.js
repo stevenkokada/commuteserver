@@ -52,6 +52,8 @@ const submitQuery = function(res) {
 
         geocode_data['startWayPoint'] = "geo!" + String(startCoord.Latitude) + "," + String(startCoord.Longitude);
 
+
+
         });
     
     const deferred_end = $.get('https://geocoder.api.here.com/6.2/geocode.json',
@@ -62,7 +64,13 @@ const submitQuery = function(res) {
         geocode_data['endLon'] = endCoord.Longitude;
         geocode_data['endWayPoint'] = "geo!" + String(endCoord.Latitude) + "," + String(endCoord.Longitude);
         }
-    );
+	);
+
+	// UNCOMMENT WHEN USING GET PARAM INPUT
+	// waypoint0 = geocode_data['startWayPoint'];
+	// waypoint1 = geocode_data['endWayPoint'];
+
+	
 
     
 

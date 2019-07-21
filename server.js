@@ -80,7 +80,7 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
             const travel_time = curr_time / 60;
 
             query_data.push({
-                key: i,
+                time: i,
                 label: departure,
                 route: curr_route,
                 y: travel_time
@@ -94,7 +94,7 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 
 	axios.all(query_deferred).then(function() {
 		query_data.sort(function(a, b) {
-			return a['key'] - b['key'];
+			return a['time'] - b['time'];
 		});
 
 		//	OPTIMAL DEPARTURE TIME CALCULATION
@@ -103,17 +103,16 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 		const minutes = parseInt(timeSplit[1]);
 	
 		const minuteIndex = hours*60 + minutes;
-		console.log(minuteIndex);
-		const validRoutes = query_data.filter(elt => elt[0] > minuteIndex - tolerance && elt[0] < minuteIndex + tolerance);
-		console.log(validRoutes);
+		const validRoutes = query_data.filter(elt => elt.time > minuteIndex - tolerance && elt.time < minuteIndex + tolerance);
 
-		validRoutes.forEach(elt => console.log(elt[1][0].summary.trafficTime))
-
-		var shortestRoute = validRoutes.reduce(function (shortest, route) {
-			return (route[1][0].summary.trafficTime || 0) < shortest[1][0].summary.trafficTime ? route: shortest;
-		  }, [null,[{summary:{trafficTime:Infinity}}]]);
-
-		console.log(shortestRoute);
+		let curr_time = Infinity;
+		let shortestRoute = null; 
+		validRoutes.forEach(validRoute => {
+			if (validRoute.route[0].summary.trafficTime < curr_time) {
+				curr_time = validRoute.route[0].summary.trafficTime;
+				shortestRoute = validRoute;
+			}
+		});
 		
 		const result = {
 			waypoint0: waypoint0, 

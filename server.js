@@ -22,11 +22,7 @@ const _createGeo = function(result) {
     return `geo!${startCoord.Latitude},${startCoord.Longitude}`;
 }
 
-const _submitGeocode = function(res) {
-	//HARD CODED INPUTS
-	const startDest = "540 Page Street, San Francisco CA"
-	const endDest = "44 Tehama Street, San Francisco CA"
-
+const _submitGeocode = function(res, startDest, endDest) {
 	const geocode_data = {};
 	const geocode_positions = [
 		['startWayPoint', startDest],
@@ -54,7 +50,7 @@ const addMinutes = function(date, minutes) {
 	return new Date(date.getTime() + minutes * 60000);
 }
 
-const submitQuery = function(res, waypoint0, waypoint1) {
+const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime, tolerance) {
  	//	ROUTE QUERYING
 	const mode = 'fastest;car;traffic:enabled;'
 	const now = new Date();
@@ -79,7 +75,7 @@ const submitQuery = function(res, waypoint0, waypoint1) {
 				departure: departure
 			}
 		}).then(function(result) {
-			const data = result['data']['response']['route'][0]['summary']['trafficTime'];
+			const data = result.data.response.route[0].summary.trafficTime;
             const travel_time = data / 60;
 
             query_data.push({
@@ -100,12 +96,9 @@ const submitQuery = function(res, waypoint0, waypoint1) {
 		});
 
 		//	OPTIMAL DEPARTURE TIME CALCULATION
-		const desiredDeparture = "20:22";
-
-		const timeSplit = desiredDeparture.split(':');
-		const hours = parseInt(timeSplit[0], 10);
-		const minutes = parseInt(timeSplit[1], 10);
-		const tolerance = parseInt("130", 10);
+		const timeSplit = desiredTime.split(':');
+		const hours = parseInt(timeSplit[0]);
+		const minutes = parseInt(timeSplit[1]);
 	
 		const minuteIndex = hours*60 + minutes;
 		const validRoutes = query_data.filter(elt => elt[0] > minuteIndex - tolerance && elt[0] < minuteIndex + tolerance);
@@ -125,7 +118,14 @@ const submitQuery = function(res, waypoint0, waypoint1) {
 }
 
 app.get("/histogram", function(req, res) {
-	const deferred_geos = _submitGeocode(res);
+	const startDest = req.query.startLocation;
+	const endDest = req.query.endLocation;
+
+	const timeOffset = parseInt(req.query.timeOffset);
+	const desiredTime = req.query.desiredTime; // departure time
+	const tolerance = parseInt(req.query.tolerance);
+
+	const deferred_geos = _submitGeocode(res, startDest, endDest);
 	axios.all(deferred_geos).then(function(results) {
 		let waypoint0 = '';
 		let waypoint1 = '';
@@ -136,7 +136,7 @@ app.get("/histogram", function(req, res) {
 				waypoint1 = result[1];
 			}
 		});
-		submitQuery(res, waypoint0, waypoint1);
+		submitQuery(res, waypoint0, waypoint1, timeOffset, desiredTime, tolerance);
 	});
 });
 

@@ -50,7 +50,13 @@ const submitQuery = function(res) {
 			}
 		}).then(function(result) {
 			const data = result['data']['response']['route'][0]['summary']['trafficTime'];
-			query_data.push([i, data]);
+            const travel_time = data / 60;
+
+            query_data.push({
+                key: i,
+                label: departure,
+                y: travel_time
+            });
 		}).catch(error => {
 		  console.log(error);
 		});
@@ -60,7 +66,7 @@ const submitQuery = function(res) {
 
 	axios.all(query_deferred).then(function() {
 		query_data.sort(function(a, b) {
-			return a[0] - b[0]
+			return a['key'] - b['key'];
 		});
 		res.send(query_data);
 	});

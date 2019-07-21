@@ -32,6 +32,13 @@ const submitQuery = function(res) {
 	const start = "540 Page Street, San Francisco CA"
 	const destination = "44 Tehama Street, San Francisco CA"
 
+	// GET PARAM INPUTS
+	// const desiredDeparture = req.params.desiredTime;
+	// const tolerance = req.params.tolerance;
+	// const tzoffset = req.params.timezoneOffset;
+	// const start = req.params.startLocation;
+	// const destination = req.params.endLocation;
+
 
 	//	GEOCODING
     var geocoding_data = {};

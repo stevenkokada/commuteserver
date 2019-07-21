@@ -4,6 +4,13 @@ const secret = require('./secret');
 
 const app = express();
 
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
+
+
 const QUERY_FREQ_IN_MIN = 30;
 const MINS_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
@@ -30,7 +37,6 @@ const submitQuery = function(res) {
 
 	const tot_minutes = MINS_PER_HOUR * HOURS_PER_DAY;
 	for (let i = curr_time; i < tot_minutes; i+=QUERY_FREQ_IN_MIN) {
-		console.log("HEY");
 		departure = addMinutes(now, i - curr_time).toISOString();
 
 		const deferred = axios.get(`${HERE_ENDPOINT}`, {

@@ -15,7 +15,7 @@ const addMinutes = function(date, minutes) {
 	return new Date(date.getTime() + minutes * 60000);
 }
 
-const submitQuery = function() {
+const submitQuery = function(res) {
 	const waypoint0 = 'geo!52.5,13.4';
 	const waypoint1 = 'geo!52.5,13.45';
 	const mode = 'fastest;car;traffic:enabled;'
@@ -43,7 +43,7 @@ const submitQuery = function() {
 				departure: departure
 			}
 		}).then(function(result) {
-			const data = result['data']['response']['route'];
+			const data = result['data']['response']['route'][0]['summary']['trafficTime'];
 			query_data.push([i, data]);
 		}).catch(error => {
 		  console.log(error);
@@ -53,19 +53,15 @@ const submitQuery = function() {
 	}
 
 	axios.all(query_deferred).then(function() {
-		console.log("SHOULD NEVER BE HERE");
 		query_data.sort(function(a, b) {
 			return a[0] - b[0]
 		});
-		console.log(query_data);
+		res.send(query_data);
 	});
 }
 
-
-
-app.get("/", function(req, res) {
-	submitQuery();
-    res.send("Hello World");
+app.get("/histogram", function(req, res) {
+	const query_data = submitQuery(res);
 })
 app.listen(8000)
 

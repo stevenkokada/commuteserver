@@ -10,57 +10,52 @@ app.use(function(req, res, next) {
     next();
 });
 
-
 const QUERY_FREQ_IN_MIN = 30;
 const MINS_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
 
-const DUMMY_ENDPOINT = 'http://dummy.restapiexample.com/api/v1/employee';
-const HERE_ENDPOINT = 'https://route.api.here.com/routing/7.2/calculateroute.json';
+const HERE_GEO_ENDPOINT = 'https://geocoder.api.here.com/6.2/geocode.json';
+const HERE_TIME_ENDPOINT = 'https://route.api.here.com/routing/7.2/calculateroute.json';
+
+const _createGeo = function(result) {
+	const startCoord = result.data.Response.View[0].Result[0].Location.NavigationPosition[0];
+    return `geo!${startCoord.Latitude},${startCoord.Longitude}`;
+}
+
+const _submitGeocode = function(res) {
+	//HARD CODED INPUTS
+	const startDest = "540 Page Street, San Francisco CA"
+	const endDest = "44 Tehama Street, San Francisco CA"
+
+	const geocode_data = {};
+	const geocode_positions = [
+		['startWayPoint', startDest],
+		['endWayPoint', endDest]
+	];
+	const deferred_geos = []
+	geocode_positions.forEach((element) => {
+		const geoKey = element[0];
+		const position = element[1];
+		const curr_deferred = axios.get(HERE_GEO_ENDPOINT, {
+	    	params: {
+	    		app_id: secret.HERE_APP_ID,
+	    		app_code: secret.HERE_APP_CODE,
+	    		searchtext: position		
+	    	}
+	    }).then(function(result) {
+	        return [geoKey, _createGeo(result)];
+	    });
+	    deferred_geos.push(curr_deferred);
+	})
+	return deferred_geos;
+}
 
 const addMinutes = function(date, minutes) {
 	return new Date(date.getTime() + minutes * 60000);
 }
 
-const submitQuery = function(res) {
-
-	//HARD CODED INPUTS
-	const desiredDeparture = "20:22";
-	const tolerance = "130";
-	const waypoint0 = 'geo!52.5,13.4';
-	const waypoint1 = 'geo!52.5,13.45';
-	const start = "540 Page Street, San Francisco CA"
-	const destination = "44 Tehama Street, San Francisco CA"
-
-
-	//	GEOCODING
-    var geocoding_data = {};
-
-    const deferred_start = $.get('https://geocoder.api.here.com/6.2/geocode.json',
-    {app_id: '267f9NJSwzyCIx6hWBFZ' , app_code: "sytOu8Ybgls8UHnTlB_GOg", searchtext: start},
-    function(data){
-        const startCoord = data.Response.View[0].Result[0].Location.NavigationPosition[0];
-        geocode_data['startLat'] = startCoord.Latitude;
-        geocode_data['startLon'] = startCoord.Longitude;
-
-        geocode_data['startWayPoint'] = "geo!" + String(startCoord.Latitude) + "," + String(startCoord.Longitude);
-
-        });
-    
-    const deferred_end = $.get('https://geocoder.api.here.com/6.2/geocode.json',
-    {app_id: '267f9NJSwzyCIx6hWBFZ' , app_code: "sytOu8Ybgls8UHnTlB_GOg", searchtext: destination},
-    function(data){
-        const endCoord = data.Response.View[0].Result[0].Location.NavigationPosition[0];
-        geocode_data['endLat'] = endCoord.Latitude;
-        geocode_data['endLon'] = endCoord.Longitude;
-        geocode_data['endWayPoint'] = "geo!" + String(endCoord.Latitude) + "," + String(endCoord.Longitude);
-        }
-    );
-
-    
-
-	//	ROUTE QUERYING
-
+const submitQuery = function(res, waypoint0, waypoint1) {
+ 	//	ROUTE QUERYING
 	const mode = 'fastest;car;traffic:enabled;'
 	const now = new Date();
 	const curr_hour = now.getHours();
@@ -71,10 +66,10 @@ const submitQuery = function(res) {
 	const query_data = [];
 
 	const tot_minutes = MINS_PER_HOUR * HOURS_PER_DAY;
-	for (let i = curr_time; i < tot_minutes; i+=QUERY_FREQ_IN_MIN) {
+	for (let i = curr_time; i < tot_minutes; i += QUERY_FREQ_IN_MIN) {
 		let departure = addMinutes(now, i - curr_time).toISOString();
 
-		const deferred = axios.get(`${HERE_ENDPOINT}`, {
+		const deferred = axios.get(HERE_TIME_ENDPOINT, {
 			params: {
 				app_id: secret.HERE_APP_ID,
 				app_code: secret.HERE_APP_CODE,
@@ -104,15 +99,17 @@ const submitQuery = function(res) {
 			return a['key'] - b['key'];
 		});
 
-
 		//	OPTIMAL DEPARTURE TIME CALCULATION
+		const desiredDeparture = "20:22";
+
 		const timeSplit = desiredDeparture.split(':');
 		const hours = parseInt(timeSplit[0], 10);
 		const minutes = parseInt(timeSplit[1], 10);
-		const tolerance = parseInt(tolerance, 10);
+		const tolerance = parseInt("130", 10);
 	
 		const minuteIndex = hours*60 + minutes;
 		const validRoutes = query_data.filter(elt => elt[0] > minuteIndex - tolerance && elt[0] < minuteIndex + tolerance);
+		console.log(validRoutes);
 
 		validRoutes.forEach(elt => console.log(elt[1][0].summary.trafficTime))
 
@@ -120,21 +117,28 @@ const submitQuery = function(res) {
 			return (route[1][0].summary.trafficTime || 0) < shortest[1][0].summary.trafficTime ? route: shortest;
 		  }, [null,[{summary:{trafficTime:Infinity}}]]);
 
-		// console.log(shortestRoute);
+		console.log(shortestRoute);
 		
-
 		const result = {query_data: query_data, shortestRoute: shortestRoute}
-
 		res.send(result);
-
-
-		
-
 	});
 }
 
 app.get("/histogram", function(req, res) {
-	const result = submitQuery(res);
-})
+	const deferred_geos = _submitGeocode(res);
+	axios.all(deferred_geos).then(function(results) {
+		let waypoint0 = '';
+		let waypoint1 = '';
+		results.forEach(result => {
+			if (result[0] == 'startWayPoint') {
+				waypoint0 = result[1];
+			} else {
+				waypoint1 = result[1];
+			}
+		});
+		submitQuery(res, waypoint0, waypoint1);
+	});
+});
+
 app.listen(8000)
 

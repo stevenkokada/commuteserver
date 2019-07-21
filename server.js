@@ -53,6 +53,8 @@ const addMinutes = function(date, minutes) {
 const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime, tolerance) {
  	//	ROUTE QUERYING
 	const mode = 'fastest;car;traffic:enabled;'
+	const routeattributes = 'waypoints,summary,shape,legs';
+
 	const now = new Date();
 	const curr_hour = now.getHours();
 	const curr_minute = now.getMinutes();
@@ -72,6 +74,7 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 				waypoint0: waypoint0,
 				waypoint1: waypoint1,
 				mode: mode,
+				routeattributes: routeattributes,
 				departure: departure
 			}
 		}).then(function(result) {

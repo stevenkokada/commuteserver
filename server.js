@@ -37,7 +37,7 @@ const submitQuery = function(res) {
 
 	const tot_minutes = MINS_PER_HOUR * HOURS_PER_DAY;
 	for (let i = curr_time; i < tot_minutes; i+=QUERY_FREQ_IN_MIN) {
-		departure = addMinutes(now, i - curr_time).toISOString();
+		let departure = addMinutes(now, i - curr_time).toISOString();
 
 		const deferred = axios.get(`${HERE_ENDPOINT}`, {
 			params: {

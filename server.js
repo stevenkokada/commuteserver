@@ -62,8 +62,8 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 	const query_data = [];
 
 	const tot_minutes = MINS_PER_HOUR * HOURS_PER_DAY;
-	for (let i = curr_time; i < tot_minutes; i += QUERY_FREQ_IN_MIN) {
-		let departure = addMinutes(now, i - curr_time).toISOString();
+	for (let i = 0; i < tot_minutes; i += QUERY_FREQ_IN_MIN) {
+		let departure = addMinutes(now, i).toISOString();
 
 		const deferred = axios.get(HERE_TIME_ENDPOINT, {
 			params: {
@@ -75,12 +75,14 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 				departure: departure
 			}
 		}).then(function(result) {
-			const data = result.data.response.route[0].summary.trafficTime;
-            const travel_time = data / 60;
+			const curr_time = result.data.response.route[0].summary.trafficTime;
+			const curr_route = result.data.response.route;
+            const travel_time = curr_time / 60;
 
             query_data.push({
                 key: i,
                 label: departure,
+                route: curr_route,
                 y: travel_time
             });
 		}).catch(error => {
@@ -97,10 +99,11 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 
 		//	OPTIMAL DEPARTURE TIME CALCULATION
 		const timeSplit = desiredTime.split(':');
-		const hours = parseInt(timeSplit[0]);
+		const hours = (parseInt(timeSplit[0]) + timeOffset) % 24;
 		const minutes = parseInt(timeSplit[1]);
 	
 		const minuteIndex = hours*60 + minutes;
+		console.log(minuteIndex);
 		const validRoutes = query_data.filter(elt => elt[0] > minuteIndex - tolerance && elt[0] < minuteIndex + tolerance);
 		console.log(validRoutes);
 
@@ -112,7 +115,12 @@ const submitQuery = function(res, waypoint0, waypoint1, timeOffset, desiredTime,
 
 		console.log(shortestRoute);
 		
-		const result = {query_data: query_data, shortestRoute: shortestRoute}
+		const result = {
+			waypoint0: waypoint0, 
+			waypoint1: waypoint1, 
+			query_data: query_data, 
+			shortestRoute: shortestRoute
+		}
 		res.send(result);
 	});
 }
